@@ -1,0 +1,62 @@
+:root{
+  /* Ajusta según tu pantalla (1080p / 4k) */
+  --kiosk-font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+  --kiosk-radius: 18px;
+  --kiosk-shadow: 0 8px 24px rgba(0,0,0,.14);
+
+  /* Touch targets grandes */
+  --tap-min-h: 56px;
+  --tap-min-w: 56px;
+
+  /* Tipografía */
+  --text-xxl: 28px;
+  --text-xl: 22px;
+  --text-lg: 18px;
+  --text-md: 16px;
+
+  /* Spacing */
+  --sp-1: 8px;
+  --sp-2: 12px;
+  --sp-3: 16px;
+  --sp-4: 20px;
+  --sp-5: 24px;
+
+  /* Colores (cámbialos a tu branding) */
+  --bg: #0b0f14;
+  --surface: #121823;
+  --surface-2: #182234;
+  --text: #e9eef6;
+  --muted: rgba(233,238,246,.72);
+
+  --primary: #2f7dff;
+  --danger: #ff3b30;
+  --success: #30d158;
+
+  /* Footer fixed */
+  --footer-h: 92px;
+}
+
+/* Útil para modo tótem: evitar selección accidental */
+.kioskNoSelect, .kioskNoSelect * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Mejor sensación en touch */
+.kioskTouch {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.kioskScreen {
+  font-family: var(--kiosk-font);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* IMPORTANTE:
+   Dale padding-bottom para que el contenido no quede escondido bajo el footer fijo */
+.kioskContentWithFooter {
+  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px) + var(--sp-3));
+}
