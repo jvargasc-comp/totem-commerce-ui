@@ -31,7 +31,7 @@ export const KioskCartBar: React.FC<KioskCartBarProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        height: "var(--footer-h)",
+        minHeight: "var(--footer-h)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
         background: "rgba(18,24,35,.92)",
         backdropFilter: "blur(10px)",

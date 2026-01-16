@@ -34,7 +34,21 @@
   --success: #30d158;
 
   /* Footer fixed */
-  --footer-h: 92px;
+  --footer-h: 104px;
+
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+}
+
+.kioskScreen {
+  font-family: var(--kiosk-font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
 }
 
 /* Útil para modo tótem: evitar selección accidental */
@@ -49,14 +63,25 @@
   touch-action: manipulation;
 }
 
-.kioskScreen {
-  font-family: var(--kiosk-font);
-  background: var(--bg);
-  color: var(--text);
-}
 
 /* IMPORTANTE:
    Dale padding-bottom para que el contenido no quede escondido bajo el footer fijo */
 .kioskContentWithFooter {
-  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px) + var(--sp-3));
+  padding-bottom: calc(
+    var(--footer-h) + env(safe-area-inset-bottom, 0px) + 24px
+  );
+}
+
+
+/* Quitar estilo plantilla Vite (centra y mete padding) */
+#root {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+/* Evita fondos blancos globales */
+html, body, #root {
+  background: var(--bg) !important;
 }

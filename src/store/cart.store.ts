@@ -1,7 +1,7 @@
 import type { Product } from '../types/catalog';
 
-type CartState = { items: CartItem[] };
 export type CartItem = { product: Product; qty: number };
+export type CartState = { items: CartItem[] };
 
 const state: { items: CartItem[] } = { items: [] };
 const listeners = new Set<() => void>();
@@ -12,7 +12,7 @@ function emit() {
 
 export function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => { listeners.delete(listener); };
 }
 
 export function getCart() {
@@ -20,9 +20,16 @@ export function getCart() {
 }
 
 export function addToCart(product: Product) {
-  const found = state.items.find((i) => i.product.id === product.id);
-  if (found) found.qty += 1;
-  else state.items.push({ product, qty: 1 });
+  const idx = state.items.findIndex((i) => i.product.id === product.id);
+
+  if (idx >= 0) {
+    state.items = state.items.map((i, j) =>
+      j === idx ? { ...i, qty: i.qty + 1 } : i
+    );
+  } else {
+    state.items = [...state.items, { product, qty: 1 }];
+  }
+
   emit();
 }
 
@@ -49,5 +56,5 @@ export function getCartSnapshot(): CartState {
 
 export function subscribeCart(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => { listeners.delete(listener); }
 }
