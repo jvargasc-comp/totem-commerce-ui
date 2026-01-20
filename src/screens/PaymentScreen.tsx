@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { createPaymentIntent, confirmPayment } from '../api/payments.api';
-import { getOrderStatus } from '../api/orders.api';
+import React, { useMemo, useState } from "react";
+import { KioskPage } from "../components/kiosk/KioskPage";
+import { KioskButton } from "../components/kiosk/KioskButton";
+import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 
 type Props = {
   orderId: string;
@@ -9,66 +10,76 @@ type Props = {
 };
 
 export default function PaymentScreen({ orderId, onPaid, onCancel }: Props) {
-  const [msg, setMsg] = useState('Iniciando pago...');
-  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    let timer: number | undefined;
+  const shortId = useMemo(() => {
+    if (!orderId) return "";
+    return orderId.length > 10 ? `${orderId.slice(0, 6)}…${orderId.slice(-4)}` : orderId;
+  }, [orderId]);
 
-    async function run() {
-      try {
-        setErr(null);
-        // 1) Intent
-        const intent = await createPaymentIntent(orderId);
-        const paymentId = intent.payment.id;
-
-        if (!alive) return;
-        setMsg('Confirmando pago (simulado)...');
-
-        // 2) Confirm (simulado)
-        await confirmPayment(paymentId);
-
-        if (!alive) return;
-        setMsg('Esperando confirmación...');
-
-        // 3) Poll status hasta CONFIRMED
-        const poll = async () => {
-          const s = await getOrderStatus(orderId);
-          if (!alive) return;
-          if (s.status === 'CONFIRMED') {
-            onPaid();
-            return;
-          }
-          timer = window.setTimeout(poll, 1200);
-        };
-
-        poll();
-      } catch (e: unknown) {
-        if (!alive) return;
-        setErr((e as Error)?.message ?? 'Error procesando pago');
-      }
+  async function paySimulated() {
+    setLoading(true);
+    try {
+      // TODO (opcional): si tienes endpoint de pago simulado, llama aquí
+      // await payOrder(orderId)
+      await new Promise((r) => setTimeout(r, 600));
+      onPaid();
+    } finally {
+      setLoading(false);
     }
-
-    run();
-
-    return () => {
-      alive = false;
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [orderId, onPaid]);
+  }
 
   return (
-    <div style={{ padding: 16, fontFamily: 'system-ui' }}>
-      <h2 style={{ marginTop: 0 }}>Pago</h2>
-      <div style={{ fontSize: 18, marginTop: 12 }}>{msg}</div>
-      {err && <div style={{ marginTop: 12, color: 'crimson' }}>{err}</div>}
+    <KioskPage title="Pago" onHome={onCancel} variant="portrait">
+      <KioskStepBar current="payment" />
+      <div style={{ maxWidth: "var(--content-max, 820px)", margin: "0 auto" }}>
+        <div
+          style={{
+            border: "1px solid rgba(233,238,246,.12)",
+            background: "var(--surface)",
+            borderRadius: 18,
+            padding: 16,
+            boxShadow: "0 8px 24px rgba(0,0,0,.16)",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 22, fontWeight: 900 }}>Selecciona método de pago</div>
+          <div style={{ opacity: 0.8, fontSize: 16 }}>
+            Orden: <b>{shortId}</b>
+          </div>
 
-      <div style={{ marginTop: 16 }}>
-        <button onClick={onCancel} style={{ padding: '12px 16px', fontSize: 16 }}>
-          Cancelar
-        </button>
+          <div style={{ marginTop: 6, display: "grid", gap: 12 }}>
+            <KioskButton
+              label={loading ? "Procesando..." : "Pagar con Tarjeta (simulado)"}
+              variant="primary"
+              size="xl"
+              onClick={paySimulated}
+              disabled={loading || !orderId}
+            />
+
+            <KioskButton
+              label="Pago en Caja / Efectivo (simulado)"
+              variant="secondary"
+              size="xl"
+              onClick={paySimulated}
+              disabled={loading || !orderId}
+            />
+
+            <KioskButton
+              label="Cancelar"
+              variant="ghost"
+              size="xl"
+              onClick={onCancel}
+              disabled={loading}
+            />
+          </div>
+
+          <div style={{ marginTop: 6, opacity: 0.75, fontSize: 16 }}>
+            * En el MVP el pago es simulado. Luego conectamos a un gateway real.
+          </div>
+        </div>
       </div>
-    </div>
+    </KioskPage>
   );
 }

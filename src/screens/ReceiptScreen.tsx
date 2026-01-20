@@ -1,129 +1,80 @@
-import { useEffect, useRef, useState } from 'react';
-import { getReceipt } from '../api/orders.api';
-import { clearCart } from '../store/cart.store';
-import type { Receipt } from '../types/receipt';
+import React, { useEffect, useMemo, useState } from "react";
+import { KioskPage } from "../components/kiosk/KioskPage";
+import { KioskButton } from "../components/kiosk/KioskButton";
+import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 
 type Props = {
   orderId: string;
   onNew: () => void;
 };
 
-const AUTO_BACK_SECONDS = 10;
-
 export default function ReceiptScreen({ orderId, onNew }: Props) {
-  const [data, setData] = useState<Receipt | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  // Inicializamos con el valor por defecto (no usamos Date.now en render)
-  const [secondsLeft, setSecondsLeft] = useState<number>(AUTO_BACK_SECONDS);
-  const intervalRef = useRef<number | null>(null);
+  // Si ya tienes auto-retorno en tu Receipt actual, puedes borrar todo este bloque.
+  const AUTO_SECONDS = 20;
+  const [secondsLeft, setSecondsLeft] = useState<number>(AUTO_SECONDS);
 
   useEffect(() => {
-    clearCart();
-
-    getReceipt(orderId)
-      .then(setData)
-      .catch((e: unknown) =>
-        setErr(e instanceof Error ? e.message : 'Error cargando recibo'),
-      );
-
-    // Limpia interval anterior
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    // Contador local dentro del effect (no es state)
-    let remaining = AUTO_BACK_SECONDS;
-
-    // Creamos una "suscripción" (interval) y SOLO hacemos setState dentro del callback
-    intervalRef.current = window.setInterval(() => {
-      // 1) publica el valor actual hacia React
-      setSecondsLeft(remaining);
-
-      // 2) decide si termina
-      if (remaining <= 0) {
-        if (intervalRef.current) {
-          window.clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        onNew();
-        return;
-      }
-
-      // 3) decrementa para el siguiente tick
-      remaining -= 1;
+    setSecondsLeft(AUTO_SECONDS);
+    const t = window.setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
     }, 1000);
+    return () => window.clearInterval(t);
+  }, [orderId]);
 
-    return () => {
-      if (intervalRef.current) {
-        window.clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [orderId, onNew]);
+  useEffect(() => {
+    if (secondsLeft === 0) onNew();
+  }, [secondsLeft, onNew]);
 
-  if (err) {
-    return (
-      <div style={{ padding: 16, fontFamily: 'system-ui', color: 'crimson' }}>
-        {err}
-        <div style={{ marginTop: 12 }}>
-          <button onClick={onNew} style={{ padding: '12px 16px', fontSize: 16 }}>
-            Nueva compra
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div style={{ padding: 16, fontFamily: 'system-ui' }}>
-        Cargando recibo...
-      </div>
-    );
-  }
+  const shortId = useMemo(() => {
+    if (!orderId) return "";
+    return orderId.length > 10 ? `${orderId.slice(0, 6)}…${orderId.slice(-4)}` : orderId;
+  }, [orderId]);
 
   return (
-    <div style={{ padding: 16, fontFamily: 'system-ui', maxWidth: 640 }}>
-      <h2 style={{ marginTop: 0 }}>¡Gracias!</h2>
-
-      <div>
-        Orden: <b>{data.orderId}</b>
-      </div>
-      <div>
-        Estado: <b>{data.status}</b>
-      </div>
-
-      <div style={{ marginTop: 16, fontSize: 18, opacity: 0.85 }}>
-        Nueva compra en <b>{secondsLeft}</b> s
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        {data.items.map((it) => (
-          <div key={it.productId} style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              {it.name} x{it.qty}
-            </div>
-            <div>{(it.lineCents / 100).toFixed(2)}</div>
+    <KioskPage title="Recibo" onHome={onNew} variant="portrait">
+      <KioskStepBar current="receipt" />
+      <div style={{ maxWidth: "var(--content-max, 820px)", margin: "0 auto" }}>
+        <div
+          style={{
+            border: "1px solid rgba(233,238,246,.12)",
+            background: "var(--surface)",
+            borderRadius: 18,
+            padding: 16,
+            boxShadow: "0 8px 24px rgba(0,0,0,.16)",
+            display: "grid",
+            gap: 12,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 30, fontWeight: 1000, letterSpacing: ".2px" }}>✅ Compra confirmada</div>
+          <div style={{ fontSize: 18, opacity: 0.85 }}>
+            Número de orden: <b>{shortId}</b>
           </div>
-        ))}
-      </div>
 
-      <div style={{ marginTop: 12, fontSize: 18 }}>
-        Total: <b>{(data.totalCents / 100).toFixed(2)}</b>
-      </div>
+          <div
+            style={{
+              marginTop: 6,
+              padding: 14,
+              borderRadius: 18,
+              border: "1px solid rgba(48,209,88,.35)",
+              background: "rgba(48,209,88,.10)",
+              color: "var(--text)",
+              fontSize: 18,
+              fontWeight: 900,
+            }}
+          >
+            Gracias por tu compra
+          </div>
 
-      <div style={{ marginTop: 12 }}>
-        QR: <code>{data.qrString}</code>
-      </div>
+          <div style={{ marginTop: 8, display: "grid", gap: 12 }}>
+            <KioskButton label="Nueva compra" variant="primary" size="xl" onClick={onNew} />
 
-      <button
-        onClick={onNew}
-        style={{ marginTop: 16, padding: '12px 16px', fontSize: 18 }}
-      >
-        Nueva compra ahora
-      </button>
-    </div>
+            <div style={{ opacity: 0.75, fontSize: 16 }}>
+              Volviendo al inicio en <b>{secondsLeft}s</b>…
+            </div>
+          </div>
+        </div>
+      </div>
+    </KioskPage>
   );
 }

@@ -85,3 +85,23 @@ html, body, #root {
 html, body, #root {
   background: var(--bg) !important;
 }
+
+:root{
+  --header-h: 92px; /* kiosk header fijo */
+}
+
+/* contenido con header + footer */
+.kioskContentWithHeaderFooter{
+  padding-top: calc(var(--header-h) + 10px);
+  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px) + 24px);
+}
+/* opcional: ocultar scrollbar horizontal en category bar */
+.kioskHideScrollbar::-webkit-scrollbar { height: 0; }
+.kioskHideScrollbar { scrollbar-width: none; }
+
+/* Modo vertical (portrait kiosk) */
+.kioskPortrait {
+  --content-max: 820px;     /* ancho útil en vertical */
+  --header-h: 84px;         /* un poco más compacto */
+  --footer-h: 112px;        /* un poquito más alto en vertical */
+}

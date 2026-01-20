@@ -2,46 +2,50 @@ import { useEffect, useMemo, useState } from "react";
 import { getCategories, getProducts } from "../api/catalog.api";
 import type { Category, Product } from "../types/catalog";
 import { addToCart, getCartSnapshot, subscribeCart } from "../store/cart.store";
+import type { CartState } from "../store/cart.store";
 import { KioskCartBar } from "../components/kiosk/KioskCartBar";
 import { KioskButton } from "../components/kiosk/KioskButton";
-import type { CartState } from "../store/cart.store";
 import { KioskFooterSpacer } from "../components/kiosk/KioskFooterSpacer";
+import { KioskPage } from "../components/kiosk/KioskPage";
+import { KioskCategoryBar } from "../components/kiosk/KioskCategoryBar";
+import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 
 function money(cents: number) {
   return (cents / 100).toLocaleString("es-EC", { style: "currency", currency: "USD" });
 }
 
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 export default function CatalogScreen(props: { onGoCart: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categoryId, setCategoryId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>(""); // "" = todas
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // ======= Estado de carrito (para barra inferior) =======
+  // ======= Carrito (barra inferior) =======
   const [cart, setCart] = useState<CartState>(() => {
-  const snap = getCartSnapshot();
-  return { items: snap.items.map((i) => ({ ...i })) };
-});
-
-useEffect(() => {
-  return subscribeCart(() => {
     const snap = getCartSnapshot();
-    // Clon superficial para garantizar nueva referencia y re-render
-    setCart({ items: snap.items.map((i) => ({ ...i })) });
+    return { items: snap.items.map((i) => ({ ...i })) };
   });
-}, []);
 
-const itemsCount = useMemo(() => {
-  return cart.items.reduce((acc, it) => acc + it.qty, 0);
-}, [cart]);
+  useEffect(() => {
+    return subscribeCart(() => {
+      const snap = getCartSnapshot();
+      setCart({ items: snap.items.map((i) => ({ ...i })) });
+    });
+  }, []);
 
-const totalCents = useMemo(() => {
-  return cart.items.reduce((acc, it) => acc + it.product.priceCents * it.qty, 0);
-}, [cart]);
+  const itemsCount = useMemo(() => cart.items.reduce((acc, it) => acc + it.qty, 0), [cart]);
+  const totalCents = useMemo(
+    () => cart.items.reduce((acc, it) => acc + it.product.priceCents * it.qty, 0),
+    [cart]
+  );
 
-  // ======= Carga catálogo =======
+  // ======= Cargar catálogo =======
   async function load() {
     setLoading(true);
     setErr(null);
@@ -57,8 +61,12 @@ const totalCents = useMemo(() => {
     } finally {
       setLoading(false);
     }
-    console.log("API:", import.meta.env.VITE_API_BASE_URL);
   }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     load();
@@ -71,144 +79,167 @@ const totalCents = useMemo(() => {
     return products.filter((p) => `${p.name} ${p.brand ?? ""}`.toLowerCase().includes(term));
   }, [products, q]);
 
+  const activeCategories = useMemo(() => categories.filter((c) => c.isActive), [categories]);
+
   return (
-    <div className="kioskScreen kioskNoSelect kioskContentWithFooter" style={{ padding: 16 }}>
-      {/* Header simple (por ahora); luego lo hacemos fijo tipo kiosk */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <h2 style={{ margin: 0, flex: 1, fontSize: 28, letterSpacing: ".2px" }}>
-          Farmacia — Catálogo
-        </h2>
-
-        {/* Este botón lo dejamos, pero ya estilo kiosk */}
-        <div style={{ width: 220 }}>
-          <KioskButton
-            label="Ver carrito"
-            variant="secondary"
-            size="xl"
-            onClick={props.onGoCart}
-            disabled={itemsCount === 0}
-          />
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "340px 1fr 220px",
-          gap: 12,
-          marginTop: 12,
-          alignItems: "center",
-        }}
-      >
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          style={{
-            padding: 14,
-            fontSize: 18,
-            borderRadius: 14,
-            border: "1px solid rgba(233,238,246,.14)",
-            background: "var(--surface)",
-            color: "var(--text)",
-            minHeight: 56,
-          }}
-        >
-          <option value="">Todas las categorías</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar producto..."
-          style={{
-            padding: 14,
-            fontSize: 18,
-            borderRadius: 14,
-            border: "1px solid rgba(233,238,246,.14)",
-            background: "var(--surface)",
-            color: "var(--text)",
-            minHeight: 56,
+    <KioskPage title="Farmacia — Catálogo" variant="portrait">
+      <div style={{ maxWidth: "var(--content-max, 1100px)", margin: "0 auto" }}>
+        <KioskStepBar current="catalog" />
+        {/* Categorías tipo kiosk */}
+        <KioskCategoryBar
+          categories={activeCategories.map((c) => ({ id: c.id, name: c.name }))}
+          selectedId={categoryId}
+          onSelect={(id) => {
+            setCategoryId(id);
+            scrollToTop();
           }}
         />
 
-        <KioskButton
-          label={loading ? "Cargando..." : "Refrescar"}
-          variant="ghost"
-          size="xl"
-          onClick={load}
-          disabled={loading}
-        />
-      </div>
-
-      {err && (
+        {/* Search + refrescar */}
         <div
           style={{
             marginTop: 12,
-            color: "white",
-            background: "rgba(255,59,48,.16)",
-            border: "1px solid rgba(255,59,48,.28)",
-            padding: 12,
-            borderRadius: 14,
-            fontSize: 16,
+            display: "grid",
+            gridTemplateColumns: "1fr 220px",
+            gap: 12,
+            alignItems: "center",
           }}
         >
-          {err}
-        </div>
-      )}
-
-      {/* Grid de productos: touch-friendly */}
-      <div
-        style={{
-          marginTop: 16,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 14,
-        }}
-      >
-        {filtered.map((p) => (
-          <div
-            key={p.id}
-            className="kioskTouch"
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar producto..."
+            inputMode="search"
+            enterKeyHint="search"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                scrollToTop();
+                load();
+              }
+            }}
             style={{
-              border: "1px solid rgba(233,238,246,.12)",
-              background: "var(--surface)",
-              borderRadius: 18,
               padding: 14,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              boxShadow: "0 8px 24px rgba(0,0,0,.16)",
+              fontSize: 18,
+              borderRadius: 14,
+              border: "1px solid rgba(233,238,246,.14)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              minHeight: 56,
+            }}
+          />
+
+          <KioskButton
+            label={loading ? "Cargando..." : "Refrescar"}
+            variant="ghost"
+            size="xl"
+            onClick={() => {
+              scrollToTop();
+              load();
+            }}
+            disabled={loading}
+          />
+        </div>
+
+        {err && (
+          <div
+            style={{
+              marginTop: 12,
+              color: "white",
+              background: "rgba(255,59,48,.16)",
+              border: "1px solid rgba(255,59,48,.28)",
+              padding: 12,
+              borderRadius: 14,
+              fontSize: 16,
             }}
           >
-            <div style={{ fontWeight: 900, fontSize: 20, lineHeight: 1.1 }}>{p.name}</div>
-            <div style={{ opacity: 0.75, fontSize: 16 }}>{p.brand ?? ""}</div>
-
-            <div style={{ fontSize: 22, fontWeight: 900 }}>{money(p.priceCents)}</div>
-
-            <KioskButton
-              label="Agregar"
-              variant="primary"
-              size="xl"
-              onClick={() => addToCart(p)}
-            />
+            {err}
           </div>
-        ))}
+        )}
+
+        {/* Productos */}
+        <div
+          style={{
+            marginTop: 16,
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 14,
+          }}
+        >
+          {filtered.length === 0 ? (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                padding: 16,
+                borderRadius: 18,
+                border: "1px solid rgba(233,238,246,.12)",
+                background: "var(--surface)",
+                color: "var(--muted)",
+                fontSize: 18,
+                fontWeight: 800,
+              }}
+            >
+              No encontramos productos con ese filtro.
+              <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ width: 240 }}>
+                  <KioskButton
+                    label="Limpiar búsqueda"
+                    variant="secondary"
+                    size="xl"
+                    onClick={() => {
+                      setQ("");
+                      scrollToTop();
+                    }}
+                  />
+                </div>
+                <div style={{ width: 240 }}>
+                  <KioskButton
+                    label="Ver todo"
+                    variant="ghost"
+                    size="xl"
+                    onClick={() => {
+                      setCategoryId("");
+                      setQ("");
+                      scrollToTop();
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            filtered.map((p) => (
+              <div
+                key={p.id}
+                className="kioskTouch"
+                style={{
+                  border: "1px solid rgba(233,238,246,.12)",
+                  background: "var(--surface)",
+                  borderRadius: 18,
+                  padding: 14,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  boxShadow: "0 8px 24px rgba(0,0,0,.16)",
+                }}
+              >
+                <div style={{ fontWeight: 900, fontSize: 20, lineHeight: 1.1 }}>{p.name}</div>
+                <div style={{ opacity: 0.75, fontSize: 16 }}>{p.brand ?? ""}</div>
+                <div style={{ fontSize: 22, fontWeight: 900 }}>{money(p.priceCents)}</div>
+
+                <KioskButton label="Agregar" variant="primary" size="xl" onClick={() => addToCart(p)} />
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Barra inferior fija */}
+      {/* Spacer + barra fija */}
       <KioskFooterSpacer />
       <KioskCartBar
         itemsCount={itemsCount}
         total={totalCents / 100}
         onViewCart={props.onGoCart}
-        onCheckout={props.onGoCart} // por ahora te mando a carrito; luego lo conectamos a /verify
+        onCheckout={props.onGoCart}
       />
-    </div>
+    </KioskPage>
   );
 }

@@ -1,48 +1,54 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { KioskPage } from "../components/kiosk/KioskPage";
 import { KioskButton } from "../components/kiosk/KioskButton";
 import { KioskCartBar } from "../components/kiosk/KioskCartBar";
-import { getCartSnapshot, subscribeCart, setQty, clearCart } from "../store/cart.store";
+import { KioskFooterSpacer } from "../components/kiosk/KioskFooterSpacer";
+import { cartTotals, setQty, clearCart } from "../store/cart.store";
+import { useCart } from "../store/useCart";
+import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 
 function money(cents: number) {
   return (cents / 100).toLocaleString("es-EC", { style: "currency", currency: "USD" });
 }
 
-export default function CartScreen(props: { onBack: () => void; onCheckout: () => void }) {
-  const [cart, setCart] = useState(() => getCartSnapshot());
+export default function CartScreen(props: { onHome: () => void; onCheckout: () => void }) {
+  const cart = useCart();
+  const totals = cartTotals();
 
-  useEffect(() => {
-    return subscribeCart(() => {
-      const snap = getCartSnapshot();
-      // fuerza nueva referencia (tu store muta state.items con push)
-      setCart({ items: snap.items.map((i) => ({ ...i })) });
-    });
-  }, []);
-
-  const itemsCount = useMemo(() => cart.items.reduce((a, i) => a + i.qty, 0), [cart]);
-  const totalCents = useMemo(
-    () => cart.items.reduce((a, i) => a + i.product.priceCents * i.qty, 0),
-    [cart]
-  );
+  const itemsCount = useMemo(() => cart.items.reduce((a, it) => a + it.qty, 0), [cart]);
+  const totalCents = totals.subtotalCents;
 
   return (
-    <div className="kioskScreen kioskNoSelect kioskContentWithFooter" style={{ padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 240 }}>
-          <KioskButton label="Seguir comprando" variant="secondary" size="xl" onClick={props.onBack} />
-        </div>
-        <h2 style={{ margin: 0, flex: 1, fontSize: 28, letterSpacing: ".2px" }}>Carrito</h2>
+    <KioskPage
+      title="Carrito"
+      onHome={props.onHome}
+      variant="portrait"
+    >
+      <KioskStepBar current="cart" />
+      {/* Acciones rápidas arriba */}
+      <div
+        style={{
+          maxWidth: 1100,
+          margin: "0 auto",
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          justifyContent: "flex-end",
+        }}
+      >
         <div style={{ width: 220 }}>
           <KioskButton
             label="Vaciar"
             variant="ghost"
             size="xl"
-            onClick={() => clearCart()}
-            disabled={itemsCount === 0}
+            onClick={clearCart}
+            disabled={cart.items.length === 0}
           />
         </div>
       </div>
 
-      <div style={{ marginTop: 16, display: "grid", gap: 12, maxWidth: 900 }}>
+      {/* Lista de items */}
+      <div style={{ marginTop: 16, maxWidth: 1100, marginLeft: "auto", marginRight: "auto", display: "grid", gap: 12 }}>
         {cart.items.length === 0 ? (
           <div
             style={{
@@ -55,39 +61,45 @@ export default function CartScreen(props: { onBack: () => void; onCheckout: () =
               fontWeight: 700,
             }}
           >
-            Tu carrito está vacío. Toca “Seguir comprando”.
+            Tu carrito está vacío. Toca <b>Inicio</b> para agregar productos.
           </div>
         ) : (
-          cart.items.map((it) => (
+          cart.items.map((i) => (
             <div
-              key={it.product.id}
+              key={i.product.id}
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 220px",
-                gap: 12,
-                alignItems: "center",
-                padding: 14,
-                borderRadius: 18,
                 border: "1px solid rgba(233,238,246,.12)",
                 background: "var(--surface)",
+                borderRadius: 18,
+                padding: 14,
                 boxShadow: "0 8px 24px rgba(0,0,0,.16)",
               }}
             >
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.1 }}>{it.product.name}</div>
-                <div style={{ opacity: 0.75, marginTop: 4 }}>{it.product.brand ?? ""}</div>
-                <div style={{ marginTop: 8, fontSize: 18, fontWeight: 900 }}>
-                  {money(it.product.priceCents)}
-                </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                <div style={{ fontWeight: 900, fontSize: 20, flex: 1 }}>{i.product.name}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, opacity: 0.9 }}>{money(i.product.priceCents)}</div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              {i.product.brand ? (
+                <div style={{ opacity: 0.75, marginTop: 4 }}>{i.product.brand}</div>
+              ) : null}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "120px 1fr 120px 180px",
+                  gap: 10,
+                  alignItems: "center",
+                  marginTop: 12,
+                }}
+              >
                 <KioskButton
                   label="–"
                   variant="secondary"
                   size="xl"
-                  onClick={() => setQty(it.product.id, it.qty - 1)}
+                  onClick={() => setQty(i.product.id, i.qty - 1)}
                 />
+
                 <div
                   style={{
                     minHeight: 64,
@@ -101,27 +113,34 @@ export default function CartScreen(props: { onBack: () => void; onCheckout: () =
                     fontWeight: 900,
                   }}
                 >
-                  {it.qty}
+                  {i.qty}
                 </div>
+
                 <KioskButton
                   label="+"
                   variant="secondary"
                   size="xl"
-                  onClick={() => setQty(it.product.id, it.qty + 1)}
+                  onClick={() => setQty(i.product.id, i.qty + 1)}
                 />
+
+                <div style={{ textAlign: "right", fontSize: 22, fontWeight: 900 }}>
+                  {money(i.product.priceCents * i.qty)}
+                </div>
               </div>
             </div>
           ))
         )}
       </div>
 
+      {/* Spacer anti-tapa + Barra inferior */}
+      <KioskFooterSpacer />
       <KioskCartBar
         itemsCount={itemsCount}
         total={totalCents / 100}
         onViewCart={() => {}}
         onCheckout={props.onCheckout}
-        checkoutDisabled={itemsCount === 0}
+        checkoutDisabled={cart.items.length === 0}
       />
-    </div>
+    </KioskPage>
   );
 }
