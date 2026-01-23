@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { KioskPage } from "../components/kiosk/KioskPage";
 import { KioskButton } from "../components/kiosk/KioskButton";
 import { KioskStepBar } from "../components/kiosk/KioskStepBar";
