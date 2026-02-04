@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { KioskPage } from "../components/kiosk/KioskPage";
 import { KioskButton } from "../components/kiosk/KioskButton";
-import { KioskStepBar } from "../components/kiosk/KioskStepBar";
+import { KioskCartBar } from '../components/kiosk/KioskCartBar';
+import { KioskFooterSpacer } from '../components/kiosk/KioskFooterSpacer';
 
 type Props = {
   orderId: string;
@@ -30,8 +31,7 @@ export default function PaymentScreen({ orderId, onPaid, onCancel }: Props) {
   }
 
   return (
-    <KioskPage title="Pago" onHome={onCancel} variant="portrait">
-      <KioskStepBar current="payment" />
+    <KioskPage title="Pago" onHome={onCancel} variant="portrait" step="pay">
       <div style={{ maxWidth: "var(--content-max, 820px)", margin: "0 auto" }}>
         <div
           style={{
@@ -80,6 +80,13 @@ export default function PaymentScreen({ orderId, onPaid, onCancel }: Props) {
           </div>
         </div>
       </div>
+      <KioskFooterSpacer />
+      <KioskCartBar
+        itemsCount={0}
+        total={0}
+        onViewCart={onCancel}
+        onCheckout={() => {}}
+      />
     </KioskPage>
   );
 }

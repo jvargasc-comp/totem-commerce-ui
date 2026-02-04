@@ -10,9 +10,10 @@ import { useCart } from "../store/useCart";
 import { cartTotals } from "../store/cart.store";
 import { KioskPage } from "../components/kiosk/KioskPage";
 import { KioskButton } from "../components/kiosk/KioskButton";
-import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 import OnScreenKeyboardModal from "../components/OnScreenKeyboardModal";
 import CityPickerModal from "../components/CityPickerModal";
+import { KioskCartBar } from '../components/kiosk/KioskCartBar';
+import { KioskFooterSpacer } from '../components/kiosk/KioskFooterSpacer';
 
 type Props = {
   onBack: () => void;
@@ -549,9 +550,8 @@ export default function CheckoutScreen({ onBack, onOrderCreated }: Props) {
   }, [name, customerPhoneDigits, fulfillment, address, windowId, deliveryAllowed]);
 
   return (
-    <KioskPage title="Verificar compra" onHome={onBack} variant="portrait">
-      <KioskStepBar current="checkout" />
-
+    <KioskPage title="Verificar compra" onHome={onBack} variant="portrait" step="checkout">
+  
       <div style={{ maxWidth: "var(--content-max, 820px)", margin: "0 auto" }}>
         {/* Resumen */}
         <div
@@ -957,6 +957,14 @@ export default function CheckoutScreen({ onBack, onOrderCreated }: Props) {
           setCityModalOpen(false);
           openKeyboard("city_text");
         }}
+      />
+      <KioskFooterSpacer />
+      <KioskCartBar
+        itemsCount={itemsCount}
+        total={totalWithShippingCents / 100}
+        onViewCart={onBack}       // o navega a carrito si tienes esa ruta/handler
+        onCheckout={submit}       // en checkout equivale a “continuar”
+        checkoutDisabled={!canSubmit || loading}
       />
     </KioskPage>
   );

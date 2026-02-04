@@ -3,65 +3,70 @@ import { KioskButton } from "./KioskButton";
 
 export type KioskHeaderProps = {
   title: string;
-  onHome?: () => void;     // volver a catálogo / inicio
-  onHelp?: () => void;     // abrir modal ayuda (luego lo hacemos)
-  rightSlot?: React.ReactNode; // opcional (ej: reloj, estado)
+  onHome?: () => void;
+
+  // ✅ nuevo
+  helpEnabled?: boolean;
+  onHelp?: () => void;
 };
 
-export function KioskHeader({ title, onHome, onHelp, rightSlot }: KioskHeaderProps) {
+export function KioskHeader({ title, onHome, helpEnabled = true, onHelp }: KioskHeaderProps) {
   return (
     <div
-      className="kioskNoSelect kioskTouch"
+      className="kioskNoSelect"
       style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        top: 0,
-        height: "var(--header-h)",
-        background: "rgba(18,24,35,.92)",
-        backdropFilter: "blur(10px)",
-        borderBottom: "1px solid rgba(233,238,246,.10)",
-        zIndex: 60,
+        display: "grid",
+        gridTemplateColumns: "240px 1fr 240px",
+        gap: 12,
+        alignItems: "center",
+        paddingTop: 10,
       }}
     >
-      <div
-        style={{
-          height: "100%",
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "12px 14px",
-          display: "grid",
-          gridTemplateColumns: "320px 1fr 240px",
-          gap: 28,
-          alignItems: "center",
-        }}
-      >
-        <div style={{ width: 260 }}>
+      {/* Izq: Inicio */}
+      <div style={{ display: "flex", justifyContent: "flex-start" }}>
+        <div style={{ width: 220 }}>
           <KioskButton
             label="Inicio"
             variant="secondary"
             size="xl"
-            onClick={onHome}
+            onClick={onHome ?? (() => {})}
             disabled={!onHome}
           />
         </div>
+      </div>
 
-        <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: ".2px" }}>
-          {title}
-        </div>
+      {/* Centro: Título */}
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 28,
+          fontWeight: 900,
+          letterSpacing: ".3px",
+          color: "var(--text)",
+          opacity: 0.98,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {title}
+      </div>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
-          {rightSlot}
+      {/* Der: Ayuda */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        {helpEnabled ? (
           <div style={{ width: 220 }}>
             <KioskButton
               label="Ayuda"
               variant="ghost"
               size="xl"
-              onClick={onHelp}
+              onClick={onHelp ?? (() => {})}
               disabled={!onHelp}
             />
           </div>
-        </div>
+        ) : (
+          <div style={{ width: 220 }} />
+        )}
       </div>
     </div>
   );

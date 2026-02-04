@@ -1,5 +1,11 @@
-//import React from "react";
-
+import React from "react";
 export function KioskFooterSpacer() {
-  return <div style={{ height: "calc(var(--footer-h) + 24px)" }} />;
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        height: "calc(var(--footer-h) + env(safe-area-inset-bottom, 0px) + 12px)",
+      }}
+    />
+  );
 }

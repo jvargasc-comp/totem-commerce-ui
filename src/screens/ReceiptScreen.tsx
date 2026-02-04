@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { KioskPage } from "../components/kiosk/KioskPage";
 import { KioskButton } from "../components/kiosk/KioskButton";
-import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 import { getReceipt } from "../api/orders.api";
 import type { Receipt } from "../types/receipt";
+import { KioskCartBar } from '../components/kiosk/KioskCartBar';
+import { KioskFooterSpacer } from '../components/kiosk/KioskFooterSpacer';
 
 type Props = {
   orderId: string;
@@ -79,9 +80,8 @@ export default function ReceiptScreen({ orderId, onNew }: Props) {
   }, [receipt]);
 
   return (
-    <KioskPage title="Recibo" onHome={onNew} variant="portrait">
-      <KioskStepBar current="receipt" />
-
+    <KioskPage title="Recibo" onHome={onNew} variant="portrait" step="receipt">
+  
       <div style={{ maxWidth: "var(--content-max, 820px)", margin: "0 auto" }}>
         {/* Encabezado */}
         <div
@@ -340,6 +340,15 @@ export default function ReceiptScreen({ orderId, onNew }: Props) {
           </div>
         )}
       </div>
+      <KioskFooterSpacer />
+      <KioskCartBar
+        itemsCount={itemsCount}
+        total={(receipt?.totalCents ?? 0) / 100}
+        onViewCart={onNew}
+        onCheckout={onNew}
+        checkoutDisabled={true}
+      />
+
     </KioskPage>
   );
 }

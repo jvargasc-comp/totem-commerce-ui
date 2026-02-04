@@ -5,7 +5,6 @@ import { KioskCartBar } from "../components/kiosk/KioskCartBar";
 import { KioskFooterSpacer } from "../components/kiosk/KioskFooterSpacer";
 import { cartTotals, setQty, clearCart } from "../store/cart.store";
 import { useCart } from "../store/useCart";
-import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 
 function money(cents: number) {
   return (cents / 100).toLocaleString("es-EC", { style: "currency", currency: "USD" });
@@ -34,9 +33,8 @@ export default function CartScreen(props: { onHome: () => void; onCheckout: () =
   const hasNonDeliverables = nonDeliverableNames.length > 0;
 
   return (
-    <KioskPage title="Carrito" onHome={props.onHome} variant="portrait">
-      <KioskStepBar current="cart" />
-
+    <KioskPage title="Carrito" onHome={props.onHome} variant="portrait" step="cart">
+     
       {/* Acciones rápidas arriba */}
       <div
         style={{

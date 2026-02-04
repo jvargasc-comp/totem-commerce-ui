@@ -46,7 +46,8 @@ export const KioskCartBar: React.FC<KioskCartBarProps> = ({
         background: "rgba(18,24,35,.92)",
         backdropFilter: "blur(10px)",
         borderTop: "1px solid rgba(233,238,246,.10)",
-        zIndex: 50,
+        zIndex: 210,
+        transform: "translateZ(0)",
       }}
     >
       <div

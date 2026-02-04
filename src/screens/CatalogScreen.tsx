@@ -8,7 +8,6 @@ import { KioskButton } from "../components/kiosk/KioskButton";
 import { KioskFooterSpacer } from "../components/kiosk/KioskFooterSpacer";
 import { KioskPage } from "../components/kiosk/KioskPage";
 import { KioskCategoryBar } from "../components/kiosk/KioskCategoryBar";
-import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 import OnScreenKeyboardModal from "../components/OnScreenKeyboardModal";
 
 type DeliverableFilter = "ALL" | "LOCAL" | "EXTERIOR";
@@ -138,9 +137,8 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
   }, [products, q, deliverableFilter]);
 
   return (
-    <KioskPage title="Farmacia — Catálogo" variant="portrait">
+    <KioskPage title="Farmacia — Catálogo" variant="portrait" step="catalog">
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <KioskStepBar current="catalog" />
 
         <KioskCategoryBar
           categories={activeCategories.map((c) => ({ id: c.id, name: c.name }))}
