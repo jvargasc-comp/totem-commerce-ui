@@ -14,4 +14,5 @@ export type Product = {
   isActive: boolean;
   categoryId?: string | null;
   images?: { id: string; url: string; sortOrder: number }[];
+  isDeliverable?: boolean
 };

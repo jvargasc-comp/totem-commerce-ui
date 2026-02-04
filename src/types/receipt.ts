@@ -42,10 +42,18 @@ export type Receipt = {
   items: ReceiptItem[];
 
   subtotalCents: number;
+
+  // Legacy/compat: si antes usabas esto para delivery fee interno
   deliveryCents: number;
+
+  // ✅ NUEVOS: Envío (DHL simulado) persistido en backend
+  // (opcionales porque PICKUP no los tendrá)
+  shippingCents?: number;
+  shippingProvider?: string | null;
+
   totalCents: number;
 
-  // ✅ nuevos (opcionales porque pickup no los tendrá)
+  // ✅ (opcionales porque pickup no los tendrá)
   address?: ReceiptAddress | null;
   delivery?: ReceiptDelivery | null;
 

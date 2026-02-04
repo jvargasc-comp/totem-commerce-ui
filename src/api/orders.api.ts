@@ -16,7 +16,7 @@ export type DeliveryAddress = {
 
 export type DeliveryInfo = {
   storeId: string;
-  date: string;     // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   windowId: string;
   address: DeliveryAddress;
 };
@@ -30,6 +30,10 @@ export type CreateOrderPayload = {
 
   fulfillmentType?: FulfillmentType; // default PICKUP en backend
   delivery?: DeliveryInfo;
+
+  // ✅ NUEVO: envío simulado (persistido en backend para el recibo)
+  shippingCents?: number;
+  shippingProvider?: string; // "DHL_SIMULATED"
 
   // (Opcional) Legacy si ya lo usabas en backend:
   deliveryWindowId?: string;

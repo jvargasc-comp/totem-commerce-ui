@@ -1,97 +1,85 @@
-import { useEffect, useState } from 'react';
-import CatalogScreen from './screens/CatalogScreen';
-import CheckoutScreen from './screens/CheckoutScreen';
-import PaymentScreen from './screens/PaymentScreen';
-import ReceiptScreen from './screens/ReceiptScreen';
-import { useCart } from './store/useCart';
-import { cartTotals, clearCart } from './store/cart.store';
+import { useState } from "react";
+import CatalogScreen from "./screens/CatalogScreen";
+import CheckoutScreen from "./screens/CheckoutScreen";
+import PaymentScreen from "./screens/PaymentScreen";
+import ReceiptScreen from "./screens/ReceiptScreen";
 import CartScreen from "./screens/CartScreen";
 
-function money(cents: number) {
-  return (cents / 100).toLocaleString('es-EC', { style: 'currency', currency: 'USD' });
-}
+import { useCart } from "./store/useCart";
+import { cartTotals, clearCart } from "./store/cart.store";
+import { useIdleTimer } from "./hooks/useIdleTimer";
 
-type Screen = 'catalog' | 'cart' | 'checkout' | 'payment' | 'receipt';
+type Screen = "catalog" | "cart" | "checkout" | "payment" | "receipt";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('catalog');
-  const [orderId, setOrderId] = useState<string>('');
+  const [screen, setScreen] = useState<Screen>("catalog");
+  const [orderId, setOrderId] = useState<string>("");
+
+  // Mantengo tus llamadas actuales (aunque aquí no se usen directamente,
+  // las dejo porque es probable que disparen recalculo/subscripción del store)
   const cart = useCart();
   const totals = cartTotals();
 
-  useEffect(() => {
-    const IDLE_MS = 5 * 60 * 1000; // 5 minutos
-    let timer: number;
+  // Evita reset por idle durante el pago (para no cortar flujo crítico)
+  const disableIdle = screen === "payment";
 
-    const resetTimer = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        clearCart();
-        setOrderId('');
-        setScreen('catalog');
-      }, IDLE_MS);
-    };
+  const resetSessionToHome = () => {
+    clearCart();
+    setOrderId("");
+    setScreen("catalog");
+  };
 
-    const events = ['click', 'touchstart', 'mousemove', 'keydown'];
-    events.forEach((ev) => window.addEventListener(ev, resetTimer));
+  useIdleTimer({
+    timeoutMs: 5 * 60 * 1000, // 5 minutos (igual que antes)
+    enabled: !disableIdle,
+    onIdle: resetSessionToHome,
+  });
 
-    resetTimer(); // inicia el contador al cargar
-
-    return () => {
-      window.clearTimeout(timer);
-      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
-    };
-  }, []);
-
-  if (screen === 'catalog') {
-    return <CatalogScreen onGoCart={() => setScreen('cart')} />;
+  if (screen === "catalog") {
+    return <CatalogScreen onGoCart={() => setScreen("cart")} />;
   }
 
-  if (screen === 'checkout') {
+  if (screen === "checkout") {
     return (
       <CheckoutScreen
-        onBack={() => setScreen('cart')}
+        onBack={() => setScreen("cart")}
         onOrderCreated={(id) => {
           setOrderId(id);
-          setScreen('payment');
+          setScreen("payment");
         }}
       />
     );
   }
 
-  if (screen === 'payment') {
+  if (screen === "payment") {
     return (
       <PaymentScreen
         orderId={orderId}
-        onPaid={() => setScreen('receipt')}
+        onPaid={() => setScreen("receipt")}
         onCancel={() => {
           // opcional: podrías llamar a /orders/:id/cancel
-          clearCart();
-          setScreen('catalog');
+          resetSessionToHome();
         }}
       />
     );
   }
 
-  if (screen === 'receipt') {
+  if (screen === "receipt") {
     return (
       <ReceiptScreen
         orderId={orderId}
         onNew={() => {
-          clearCart();
-          setOrderId('');
-          setScreen('catalog');
+          resetSessionToHome();
         }}
       />
     );
   }
 
-  // CART
- return (
-  <CartScreen
-    onHome={() => setScreen("catalog")}
-    onCheckout={() => setScreen("checkout")}
-  />
+  // CART (screen === "cart")
+  return (
+    <CartScreen
+      onHome={() => setScreen("catalog")}
+      onCheckout={() => setScreen("checkout")}
+    />
   );
-
 }
