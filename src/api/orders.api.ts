@@ -7,8 +7,14 @@ export type DeliveryAddress = {
   line1: string;
   reference?: string;
   city: string;
+
+  // ✅ USA REQUIRED
+  state: string;
+  postalCode: string; // zip
+  phone: string;      // phone for the delivery address / recipient
+
+  // opcional si quieres seguirlo usando
   zone?: string;
-  postalCode?: string;
   notes?: string;
   lat?: number;
   lng?: number;
@@ -31,11 +37,11 @@ export type CreateOrderPayload = {
   fulfillmentType?: FulfillmentType; // default PICKUP en backend
   delivery?: DeliveryInfo;
 
-  // ✅ NUEVO: envío simulado (persistido en backend para el recibo)
+  // opcional: backend recalcula igual
   shippingCents?: number;
-  shippingProvider?: string; // "DHL_SIMULATED"
+  shippingProvider?: string;
 
-  // (Opcional) Legacy si ya lo usabas en backend:
+  // Legacy (si todavía existiera en algún lugar del front):
   deliveryWindowId?: string;
   address?: {
     line1: string;

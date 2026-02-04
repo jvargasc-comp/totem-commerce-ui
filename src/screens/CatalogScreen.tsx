@@ -11,6 +11,8 @@ import { KioskCategoryBar } from "../components/kiosk/KioskCategoryBar";
 import { KioskStepBar } from "../components/kiosk/KioskStepBar";
 import OnScreenKeyboardModal from "../components/OnScreenKeyboardModal";
 
+type DeliverableFilter = "ALL" | "LOCAL" | "EXTERIOR";
+
 function money(cents: number) {
   return (cents / 100).toLocaleString("es-EC", {
     style: "currency",
@@ -23,22 +25,18 @@ function scrollToTop() {
 }
 
 function productCoverUrl(p: Product) {
-  const first = (p as { images?: Array<{ url: string }> })?.images?.[0]?.url as
-    | string
-    | undefined;
-  return first || "";
+  return p.images?.[0]?.url || "";
 }
 
 function isDeliverable(p: Product) {
-  // por compat: si no viene, asumimos true
-  const v = (p as { isDeliverable?: unknown })?.isDeliverable;
+  const v = (p as any)?.isDeliverable;
   return typeof v === "boolean" ? v : true;
 }
 
 export default function CatalogScreen(props: { onGoCart: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categoryId, setCategoryId] = useState<string>(""); // "" = todas
+  const [categoryId, setCategoryId] = useState<string>("");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -46,7 +44,11 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
   // 🔤 Teclado búsqueda
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // ======= Carrito (barra inferior) =======
+  // 🧭 NUEVO: filtro por tipo de entrega
+  const [deliverableFilter, setDeliverableFilter] =
+    useState<DeliverableFilter>("ALL");
+
+  // ======= Carrito =======
   const [cart, setCart] = useState<CartState>(() => {
     const snap = getCartSnapshot();
     return { items: snap.items.map((i) => ({ ...i })) };
@@ -60,7 +62,7 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
   }, []);
 
   const itemsCount = useMemo(
-    () => cart.items.reduce((acc, it) => acc + it.qty, 0),
+    () => cart.items.reduce((a, it) => a + it.qty, 0),
     [cart.items]
   );
 
@@ -70,11 +72,12 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
     [cart.items]
   );
 
-  const hasNonDeliverables = useMemo(() => {
-    return cart.items.some((i) => i.product?.isDeliverable === false);
-  }, [cart.items]);
+  const hasNonDeliverables = useMemo(
+    () => cart.items.some((i) => i.product?.isDeliverable === false),
+    [cart.items]
+  );
 
-  // ======= Cargar catálogo =======
+  // ======= Load catálogo =======
   async function load(search = q) {
     setLoading(true);
     setErr(null);
@@ -88,8 +91,8 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
       ]);
       setCategories(cats.filter((c) => c.isActive));
       setProducts(prods.filter((p) => p.isActive));
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Error cargando catálogo");
+    } catch (e: any) {
+      setErr(e.message || "Error cargando catálogo");
     } finally {
       setLoading(false);
     }
@@ -105,28 +108,40 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
     [categories]
   );
 
-  // ✅ limpiar búsqueda + mostrar todo
+  // ✅ limpiar búsqueda
   function clearSearch() {
     setQ("");
     scrollToTop();
     load("");
   }
 
+  // ======= FILTRO FINAL =======
   const filtered = useMemo(() => {
-    // Mantengo este filtro local por compat si el backend no filtra perfecto.
+    let list = products;
+
+    // 🔎 texto
     const term = q.trim().toLowerCase();
-    if (!term) return products;
-    return products.filter((p) =>
-      `${p.name} ${p.brand ?? ""}`.toLowerCase().includes(term)
-    );
-  }, [products, q]);
+    if (term) {
+      list = list.filter((p) =>
+        `${p.name} ${p.brand ?? ""}`.toLowerCase().includes(term)
+      );
+    }
+
+    // 🧭 deliverable
+    if (deliverableFilter === "LOCAL") {
+      list = list.filter((p) => isDeliverable(p) === false);
+    } else if (deliverableFilter === "EXTERIOR") {
+      list = list.filter((p) => isDeliverable(p) === true);
+    }
+
+    return list;
+  }, [products, q, deliverableFilter]);
 
   return (
     <KioskPage title="Farmacia — Catálogo" variant="portrait">
-      <div style={{ maxWidth: "var(--content-max, 1100px)", margin: "0 auto" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <KioskStepBar current="catalog" />
 
-        {/* Categorías tipo kiosk */}
         <KioskCategoryBar
           categories={activeCategories.map((c) => ({ id: c.id, name: c.name }))}
           selectedId={categoryId}
@@ -136,17 +151,15 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
           }}
         />
 
-        {/* Search + acciones */}
+        {/* 🔍 Búsqueda + acciones */}
         <div
           style={{
             marginTop: 12,
             display: "grid",
             gridTemplateColumns: q ? "1fr 220px 220px" : "1fr 220px",
             gap: 12,
-            alignItems: "center",
           }}
         >
-          {/* ✅ Búsqueda como botón (abre teclado) */}
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -163,14 +176,11 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
               display: "flex",
               alignItems: "center",
               gap: 10,
-              touchAction: "manipulation",
             }}
           >
-            <span style={{ opacity: 0.7 }}>🔍</span>
-            {q ? q : <span style={{ opacity: 0.6 }}>Buscar producto…</span>}
+            🔍 {q || <span style={{ opacity: 0.6 }}>Buscar producto…</span>}
           </button>
 
-          {/* ✅ Borrar búsqueda */}
           {q && (
             <KioskButton
               label="Borrar búsqueda"
@@ -193,16 +203,58 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
           />
         </div>
 
+        {/* 🧭 FILTRO LOCAL / EXTERIOR */}
+        <div
+          style={{
+            marginTop: 12,
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 12,
+          }}
+        >
+          {[
+            { id: "ALL", label: "Todos" },
+            { id: "LOCAL", label: "Local" },
+            { id: "EXTERIOR", label: "Exterior" },
+          ].map((f) => {
+            const active = deliverableFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => {
+                  setDeliverableFilter(f.id as DeliverableFilter);
+                  scrollToTop();
+                }}
+                className="kioskTouch kioskNoSelect"
+                style={{
+                  minHeight: 56,
+                  borderRadius: 18,
+                  border: active
+                    ? "1px solid rgba(47,125,255,.65)"
+                    : "1px solid rgba(233,238,246,.14)",
+                  background: active ? "var(--primary)" : "var(--surface)",
+                  color: "var(--text)",
+                  fontSize: 18,
+                  fontWeight: 900,
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
         {err && (
           <div
             style={{
               marginTop: 12,
-              color: "white",
-              background: "rgba(255,59,48,.16)",
-              border: "1px solid rgba(255,59,48,.28)",
               padding: 12,
               borderRadius: 14,
-              fontSize: 16,
+              background: "rgba(255,59,48,.16)",
+              border: "1px solid rgba(255,59,48,.28)",
+              color: "white",
+              fontWeight: 800,
             }}
           >
             {err}
@@ -214,177 +266,95 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
           style={{
             marginTop: 16,
             display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(2, 1fr)",
             gap: 14,
           }}
         >
-          {filtered.length === 0 ? (
-            <div
-              style={{
-                gridColumn: "1 / -1",
-                padding: 16,
-                borderRadius: 18,
-                border: "1px solid rgba(233,238,246,.12)",
-                background: "var(--surface)",
-                color: "var(--muted)",
-                fontSize: 18,
-                fontWeight: 800,
-              }}
-            >
-              No encontramos productos con ese filtro.
+          {filtered.map((p) => {
+            const deliverable = isDeliverable(p);
+            const cover = productCoverUrl(p);
+
+            return (
               <div
+                key={p.id}
                 style={{
-                  marginTop: 12,
-                  display: "flex",
-                  gap: 12,
-                  flexWrap: "wrap",
+                  borderRadius: 18,
+                  padding: 14,
+                  background: "var(--surface)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,.16)",
+                  display: "grid",
+                  gap: 10,
                 }}
               >
-                <div style={{ width: 240 }}>
-                  <KioskButton
-                    label="Borrar búsqueda"
-                    variant="secondary"
-                    size="xl"
-                    onClick={clearSearch}
-                  />
-                </div>
-                <div style={{ width: 240 }}>
-                  <KioskButton
-                    label="Ver todo"
-                    variant="ghost"
-                    size="xl"
-                    onClick={() => {
-                      setCategoryId("");
-                      clearSearch();
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            filtered.map((p) => {
-              const cover = productCoverUrl(p);
-              const deliverable = isDeliverable(p);
-
-              return (
                 <div
-                  key={p.id}
-                  className="kioskTouch"
                   style={{
-                    border: "1px solid rgba(233,238,246,.12)",
-                    background: "var(--surface)",
-                    borderRadius: 18,
-                    padding: 14,
-                    display: "grid",
-                    gap: 10,
-                    boxShadow: "0 8px 24px rgba(0,0,0,.16)",
+                    height: 150,
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    background: "rgba(233,238,246,.06)",
+                    position: "relative",
                   }}
                 >
-                  {/* Imagen */}
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      height: 150,
-                      borderRadius: 16,
-                      overflow: "hidden",
-                      background: "rgba(233,238,246,.06)",
-                      border: "1px solid rgba(233,238,246,.10)",
-                    }}
-                  >
-                    {cover ? (
-                      <img
-                        src={cover}
-                        alt={p.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "grid",
-                          placeItems: "center",
-                          opacity: 0.7,
-                          fontWeight: 800,
-                        }}
-                      >
-                        Sin imagen
-                      </div>
-                    )}
-
-                    {/* Badge delivery */}
-                    {!deliverable && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 10,
-                          right: 10,
-                          padding: "6px 10px",
-                          borderRadius: 999,
-                          fontSize: 13,
-                          fontWeight: 900,
-                          color: "white",
-                          border: "1px solid rgba(255,193,7,.35)",
-                          background: "rgba(0,0,0,.72)",
-                          backdropFilter: "blur(6px)",
-                        }}
-                      >
-                        🛍️ Solo retiro
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Texto */}
-                  <div style={{ fontWeight: 900, fontSize: 20, lineHeight: 1.1 }}>
-                    {p.name}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-                    <div style={{ opacity: 0.75, fontSize: 16, flex: 1 }}>
-                      {p.brand ?? ""}
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={p.name}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        display: "grid",
+                        placeItems: "center",
+                        height: "100%",
+                        opacity: 0.7,
+                        fontWeight: 800,
+                      }}
+                    >
+                      Sin imagen
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 900 }}>
-                      {money(p.priceCents)}
-                    </div>
-                  </div>
+                  )}
 
                   {!deliverable && (
                     <div
                       style={{
-                        fontSize: 14,
-                        opacity: 0.85,
-                        border: "1px solid rgba(255,193,7,.20)",
-                        background: "rgba(255,193,7,.10)",
-                        padding: "8px 10px",
-                        borderRadius: 14,
-                        fontWeight: 800,
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        background: "rgba(0,0,0,.7)",
+                        color: "white",
+                        fontSize: 13,
+                        fontWeight: 900,
                       }}
                     >
-                      Este producto no aplica para entrega a domicilio.
+                      🛍️ Local
                     </div>
                   )}
-
-                  <KioskButton
-                    label="Agregar"
-                    variant="primary"
-                    size="xl"
-                    onClick={() => addToCart(p)}
-                  />
                 </div>
-              );
-            })
-          )}
+
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{p.name}</div>
+
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div style={{ opacity: 0.7 }}>{p.brand}</div>
+                  <div style={{ fontWeight: 900 }}>
+                    {money(p.priceCents)}
+                  </div>
+                </div>
+
+                <KioskButton
+                  label="Agregar"
+                  variant="primary"
+                  size="xl"
+                  onClick={() => addToCart(p)}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Spacer + barra fija */}
       <KioskFooterSpacer />
       <KioskCartBar
         itemsCount={itemsCount}
@@ -394,7 +364,7 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
         hasNonDeliverables={hasNonDeliverables}
       />
 
-      {/* ⌨️ Modal teclado búsqueda */}
+      {/* ⌨️ Teclado búsqueda */}
       <OnScreenKeyboardModal
         open={searchOpen}
         title="Buscar producto"
@@ -406,14 +376,6 @@ export default function CatalogScreen(props: { onGoCart: () => void }) {
           const v = value.trim();
           setSearchOpen(false);
           scrollToTop();
-
-          if (!v) {
-            // ✅ vacío => mostrar todo
-            setQ("");
-            load("");
-            return;
-          }
-
           setQ(v);
           load(v);
         }}
